@@ -1,67 +1,73 @@
+import api from "./api";
+
 export interface User {
+  user_id: number;
   id: number;
   name: string;
-  CI: string;
   email?: string;
   role: "admin" | "alumno";
-  estado: string;
-  created_at: string;
-  updated_at: string;
+  CI?: string;
+  curso_id?: number;
+  grado?: string;
+  paralelo?: string;
 }
 
-let token: string | null = null;
+let token: string | null = localStorage.getItem("token");
 let currentUser: User | null = null;
 
-// Simulación de login
-export const login = async (data: { email?: string; password?: string; CI?: string; role: "admin" | "alumno" }): Promise<User> => {
-  const users: User[] = [
-    {
-      id: 1,
-      name: "Admin User",
-      CI: "00000001",
-      email: "admin@ejemplo.com",
-      role: "admin",
-      estado: "activo",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: 2,
-      
-      name: "Alumno Prueba",
-      CI: "12345678",
-      role: "alumno",
-      estado: "activo",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  ];
-
-  let user: User | null = null;
-
+// 🟩 Iniciar sesión (ahora detecta el rol)
+export const login = async (
+  data: { email?: string; password?: string; CI?: string; role: "admin" | "alumno"}
+): Promise<User> => {
   if (data.role === "admin") {
-    if (!data.email || !data.password) throw new Error("Faltan credenciales");
-    user = users.find(u => u.email === data.email && u.role === "admin") || null;
-    if (!user) throw new Error("Email o contraseña incorrectos");
-  } else if (data.role === "alumno") {
-    if (!data.CI) throw new Error("Falta CI");
-    user = users.find(u => u.CI === data.CI && u.role === "alumno") || null;
-    if (!user) throw new Error("CI incorrecto");
+    // 🔸 Login de administrador
+    const response = await api.post("/login", {
+      email: data.email,
+      password: data.password,
+    });
+
+    token = response.data.token;
+    currentUser = { ...response.data.user, role: "admin" };
+    localStorage.setItem("token", token);
+    return currentUser;
   }
 
-  token = "fake-jwt-token-" + user!.id;
-  localStorage.setItem("token", token);
-  currentUser = user!;
-  return user;
+  if (data.role === "alumno") {
+    // 🔸 Login de alumno por CI
+    const response = await api.post("/usuarios/view/alumna", { CI: data.CI });
+
+    currentUser = {
+      ...response.data,
+      role: "alumno",
+    };
+
+    // Los alumnos no usan token JWT, pero guardamos algo para mantener sesión
+    localStorage.setItem("token", "alumno-session");
+    return currentUser;
+  }
+
+  throw new Error("Rol no válido");
 };
 
-// Obtener perfil
+// 🟩 Obtener perfil actual
 export const getProfile = async (): Promise<User> => {
-  if (!token || !currentUser) throw new Error("No autenticado");
+  const savedToken = localStorage.getItem("token");
+
+  if (!savedToken) throw new Error("No autenticado");
+  if (currentUser) return currentUser;
+
+  // Si es una sesión de alumno sin JWT, lo devolvemos desde memoria
+  if (savedToken === "alumno-session" && currentUser?.role === "alumno") {
+    return currentUser;
+  }
+
+  // Si es admin, consultamos /me
+  const response = await api.get("/me");
+  currentUser = { ...response.data, role: "admin" };
   return currentUser;
 };
 
-// Logout
+// 🟥 Cerrar sesión
 export const logout = () => {
   token = null;
   currentUser = null;

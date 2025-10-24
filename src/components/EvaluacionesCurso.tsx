@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import Swal from "sweetalert2";
+import { useAuth } from "../context/AuthContext";
 
 interface Evaluacion {
   id: number;
@@ -27,13 +28,17 @@ const EvaluacionesCurso: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [disabledExams, setDisabledExams] = useState<number[]>([]);
-  const alumno_id = 24;
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const alumno_id = user?.user_id;
+
+
+
 
   useEffect(() => {
     const fetchEvaluaciones = async () => {
       try {
-        const res = await api.get<Evaluacion[]>("/evaluacion/curso/17");
+        const res = await api.get<Evaluacion[]>(`/evaluacion/curso/${user?.curso_id}`);
         const data = res.data;
 
         // 🔹 Verificamos el estado de cada examen con /examen/cronometro
@@ -80,8 +85,10 @@ const EvaluacionesCurso: React.FC = () => {
     if (result.isConfirmed) {
       try {
         await api.post("/examen/empezar", { alumno_id, examen_id });
-        Swal.fire("Éxito", "Examen iniciado correctamente", "success");
-        navigate("/examen-view", { state: { alumno_id, examen_id } });
+        localStorage.setItem("ultimo_examen", JSON.stringify({ alumno_id, examen_id }));
+        Swal.fire("Éxito", "Examen iniciado correctamente", "success").then(() => {
+          navigate("/examen-view");
+        });
       } catch (err: any) {
         console.error(err);
         Swal.fire("Error", "No se pudo iniciar el examen. Puede que ya haya finalizado.", "error");
@@ -105,6 +112,8 @@ const EvaluacionesCurso: React.FC = () => {
       <h2 className="text-3xl font-bold mb-6 text-gray-800 text-center">
         📘 Evaluaciones del Curso
       </h2>
+      <h1>{alumno_id}</h1>
+      
 
       {evaluaciones.length > 0 ? (
         <div className="overflow-x-auto border rounded-lg shadow-lg">

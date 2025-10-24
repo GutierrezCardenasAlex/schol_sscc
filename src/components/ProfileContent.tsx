@@ -17,7 +17,10 @@ const ProfileContent = () => {
       <p><strong>CI:</strong> {user.CI}</p>
       <p><strong>Email:</strong> {user.email || "N/A"}</p>
       <p><strong>Rol:</strong> {user.role}</p>
-      <p><strong>Estado:</strong> {user.estado}</p>
+      <p><strong>Curso:</strong> {user.curso_id || "N/A"}</p>
+      <p><strong>Grado:</strong> {user.grado || "N/A"}</p>
+      <p><strong>Paralelo:</strong> {user.paralelo || "N/A"}</p>
+      {/* <p><strong>Paralelo:</strong> {user.user_id || "N/A"}</p> */}
     </div>
   );
 };

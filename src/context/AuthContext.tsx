@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
+// src/context/AuthContext.tsx
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { login as loginService, logout as logoutService, getProfile, User } from "../services/auth";
 
 interface AuthContextType {
   user: User | null;
-  login: (data: { email?: string; password?: string; CI?: string; role: "admin" | "alumno" }) => Promise<void>;
+  login: (data: any) => Promise<void>;
   logout: () => void;
 }
 
@@ -15,17 +16,22 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      getProfile().then(setUser).catch(() => setUser(null));
+      getProfile()
+        .then(setUser)
+        .catch(() => {
+          localStorage.removeItem("token");
+          setUser(null);
+        });
     }
   }, []);
 
-  const login = async (data: { email?: string; password?: string; CI?: string; role: "admin" | "alumno" }) => {
+  const login = async (data: any) => {
     const userData = await loginService(data);
     setUser(userData);
   };
@@ -35,5 +41,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
