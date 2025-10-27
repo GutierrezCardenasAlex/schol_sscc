@@ -29,7 +29,7 @@ const AlumnoTable: React.FC = () => {
   const [search, setSearch] = useState("");
   const [selectedCurso, setSelectedCurso] = useState<number | "">("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [perPage] = useState(5);
+  const [perPage, setPerPage] = useState(15); // ✅ valor por defecto
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedAlumnoId, setSelectedAlumnoId] = useState<number | null>(null);
@@ -69,10 +69,10 @@ const AlumnoTable: React.FC = () => {
   // 🔹 Cargar alumnos al inicio y cuando cambia el curso
   useEffect(() => {
     fetchAlumnos();
-    setCurrentPage(1); // Reiniciar paginación al cambiar curso
+    setCurrentPage(1);
   }, [selectedCurso]);
 
-  // 🔹 Reiniciar paginación cuando se escribe en la búsqueda
+  // 🔹 Reiniciar paginación al buscar
   useEffect(() => {
     setCurrentPage(1);
   }, [search]);
@@ -83,7 +83,7 @@ const AlumnoTable: React.FC = () => {
     setEditModalOpen(true);
   };
 
-  // 🔹 Actualizar alumno después de editar
+  // 🔹 Actualizar alumno
   const handleUpdateAlumno = (updated: { CI: string; name: string; email: string; password?: string }) => {
     if (!selectedAlumnoId) return;
 
@@ -108,34 +108,34 @@ const AlumnoTable: React.FC = () => {
   // 🔹 Eliminar alumno
   const handleEliminarAlumno = async (id: number) => {
     const result = await Swal.fire({
-      title: '¿Estás seguro?',
-      text: 'Esta acción eliminará al alumno permanentemente.',
-      icon: 'warning',
+      title: "¿Estás seguro?",
+      text: "Esta acción eliminará al alumno permanentemente.",
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Sí, eliminar',
-      cancelButtonText: 'Cancelar'
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
     });
 
     if (result.isConfirmed) {
       try {
         await api.get(`/usuarios/delete/alumno/${id}`);
-        setAlumnos(prev => prev.filter(a => a.id !== id));
+        setAlumnos((prev) => prev.filter((a) => a.id !== id));
         Swal.fire({
           toast: true,
-          position: 'top-end',
-          icon: 'success',
-          title: 'Alumno eliminado correctamente',
+          position: "top-end",
+          icon: "success",
+          title: "Alumno eliminado correctamente",
           showConfirmButton: false,
           timer: 2500,
           timerProgressBar: true,
         });
       } catch (error) {
         Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'No se pudo eliminar el alumno.',
+          icon: "error",
+          title: "Error",
+          text: "No se pudo eliminar el alumno.",
         });
       }
     }
@@ -143,7 +143,9 @@ const AlumnoTable: React.FC = () => {
 
   // 🔹 Filtrar alumnos
   const filteredAlumnos = alumnos.filter(
-    (a) => a.name.toLowerCase().includes(search.toLowerCase()) || a.CI.includes(search)
+    (a) =>
+      a.name.toLowerCase().includes(search.toLowerCase()) ||
+      a.CI.includes(search)
   );
 
   // 🔹 Paginación
@@ -152,13 +154,29 @@ const AlumnoTable: React.FC = () => {
   const currentAlumnos = filteredAlumnos.slice(indexOfFirst, indexOfLast);
   const totalPages = Math.ceil(filteredAlumnos.length / perPage);
 
-  const handleNextPage = () => { if (currentPage < totalPages) setCurrentPage((prev) => prev + 1); };
-  const handlePrevPage = () => { if (currentPage > 1) setCurrentPage((prev) => prev - 1); };
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
+  };
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
+  };
 
-  // ✅ Nueva paginación limpia (sin bugs)
+  // ✅ Nueva paginación con puntos suspensivos
   const getPageNumbers = () => {
+    const totalVisible = 5;
     const pages: (number | string)[] = [];
-    for (let i = 1; i <= totalPages; i++) pages.push(i);
+
+    if (totalPages <= totalVisible + 2) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages.push(1, 2, 3, 4, "...", totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages);
+      }
+    }
     return pages;
   };
 
@@ -177,7 +195,10 @@ const AlumnoTable: React.FC = () => {
 
       {/* Barra superior */}
       <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
-        <button onClick={() => setModalOpen(true)} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+        <button
+          onClick={() => setModalOpen(true)}
+          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+        >
           ➕ Nuevo Alumno
         </button>
 
@@ -189,6 +210,7 @@ const AlumnoTable: React.FC = () => {
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10 pr-8 py-2 border border-gray-300 rounded-full w-64 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
           />
+
           <select
             value={selectedCurso === "" ? "" : Number(selectedCurso)}
             onChange={(e) => setSelectedCurso(e.target.value === "" ? "" : Number(e.target.value))}
@@ -196,16 +218,36 @@ const AlumnoTable: React.FC = () => {
           >
             <option value="">📚 Todos los cursos</option>
             {cursos.map((curso) => (
-              <option key={curso.id} value={curso.id}>{curso.curso}</option>
+              <option key={curso.id} value={curso.id}>
+                {curso.curso}
+              </option>
             ))}
+          </select>
+
+          {/* ✅ Selector de cantidad por página */}
+          <select
+            value={perPage}
+            onChange={(e) => {
+              setPerPage(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            className="p-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition"
+          >
+            <option value={10}>10 por página</option>
+            <option value={15}>15 por página</option>
+            <option value={30}>30 por página</option>
+            <option value={50}>50 por página</option>
           </select>
         </div>
       </div>
 
-      {/* Modal Crear Alumno */}
-      <CreateAlumnoModal isOpen={modalOpen} onClose={() => setModalOpen(false)} onSuccess={fetchAlumnos}/>
+      {/* Modales */}
+      <CreateAlumnoModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSuccess={fetchAlumnos}
+      />
 
-      {/* Modal Editar Alumno */}
       {editModalOpen && selectedAlumnoId && (
         <EditAlumnosModal
           isOpen={editModalOpen}
@@ -232,26 +274,31 @@ const AlumnoTable: React.FC = () => {
             {currentAlumnos.map((alumno, index) => (
               <tr
                 key={alumno.id}
-                className={`${alumno.id === highlightedId ? "bg-green-100 animate-pulse" : index % 2 === 0 ? "bg-gray-50" : "bg-white"} hover:bg-gray-100`}
+                className={`${
+                  alumno.id === highlightedId
+                    ? "bg-green-100 animate-pulse"
+                    : index % 2 === 0
+                    ? "bg-gray-50"
+                    : "bg-white"
+                } hover:bg-gray-100`}
               >
                 <td className="px-6 py-4 whitespace-nowrap">{alumno.id}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{alumno.CI}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{alumno.name}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{alumno.grado}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{alumno.paralelo}</td>
-
                 <td className="px-6 py-4 whitespace-nowrap flex gap-2 flex-wrap">
-                  <button 
+                  <button
                     onClick={() => handleEditarBoton(alumno.id)}
-                    className="flex items-center gap-1 text-blue-600 hover:text-blue-800 px-2 py-1 rounded" 
+                    className="flex items-center gap-1 text-blue-600 hover:text-blue-800 px-2 py-1 rounded"
                     title="Editar"
                   >
                     <Edit size={18} /> Editar
                   </button>
-                
-                  <button 
+
+                  <button
                     onClick={() => handleEliminarAlumno(alumno.id)}
-                    className="flex items-center gap-1 text-red-600 hover:text-red-800 px-2 py-1 rounded" 
+                    className="flex items-center gap-1 text-red-600 hover:text-red-800 px-2 py-1 rounded"
                     title="Eliminar"
                   >
                     <Trash2 size={18} /> Eliminar
@@ -263,30 +310,48 @@ const AlumnoTable: React.FC = () => {
         </table>
       </div>
 
-      {/* Paginación */}
+      {/* ✅ Paginación */}
       <div className="flex justify-center mt-6 items-center gap-2 flex-wrap">
-        <button 
-          onClick={handlePrevPage} 
-          disabled={currentPage === 1} 
-          className={`px-3 py-1 rounded ${currentPage === 1 ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-gray-800 text-white hover:bg-gray-700"}`}
+        <button
+          onClick={handlePrevPage}
+          disabled={currentPage === 1}
+          className={`px-3 py-1 rounded ${
+            currentPage === 1
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-gray-800 text-white hover:bg-gray-700"
+          }`}
         >
           ⬅️ Anterior
         </button>
 
         {getPageNumbers().map((page, index) =>
-          <button 
-            key={index} 
-            onClick={() => setCurrentPage(Number(page))} 
-            className={`px-3 py-1 rounded ${currentPage === page ? "bg-gray-800 text-white" : "bg-gray-200 hover:bg-gray-300"}`}
-          >
-            {page}
-          </button>
+          typeof page === "string" ? (
+            <span key={index} className="px-3 py-1 text-gray-500">
+              {page}
+            </span>
+          ) : (
+            <button
+              key={index}
+              onClick={() => setCurrentPage(page)}
+              className={`px-3 py-1 rounded ${
+                currentPage === page
+                  ? "bg-gray-800 text-white"
+                  : "bg-gray-200 hover:bg-gray-300"
+              }`}
+            >
+              {page}
+            </button>
+          )
         )}
 
-        <button 
-          onClick={handleNextPage} 
-          disabled={currentPage === totalPages} 
-          className={`px-3 py-1 rounded ${currentPage === totalPages ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-gray-800 text-white hover:bg-gray-700"}`}
+        <button
+          onClick={handleNextPage}
+          disabled={currentPage === totalPages}
+          className={`px-3 py-1 rounded ${
+            currentPage === totalPages
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-gray-800 text-white hover:bg-gray-700"
+          }`}
         >
           Siguiente ➡️
         </button>

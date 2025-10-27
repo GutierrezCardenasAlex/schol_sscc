@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { getProfile, User } from "../services/auth";
 
+interface WidgetsProps {
+  minHeight?: string; // <-- nuevo prop opcional
+}
+
 const ProfileContent = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,8 +33,11 @@ const ProfileContent = () => {
   const isAdmin = user.role?.toLowerCase() === "admin";
 
   return (
-    <div className="flex justify-center items-center h-screen bg-gradient-to-br from-blue-100 to-purple-100">
-      <div className="w-full max-w-3xl p-8 bg-white rounded-2xl shadow-lg border border-gray-100">
+      <div
+        style={{ minHeight: "80vh" }}
+        className="bg-gradient-to-br from-blue-100 to-indigo-200 flex flex-col items-center justify-center"
+      > 
+      <div className="w-full max-w-3xl p-4 bg-white rounded-2xl shadow-lg border border-gray-100">
         {/* Encabezado */}
         <div className="text-center mb-8">
           <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-white text-4xl font-bold shadow-md">

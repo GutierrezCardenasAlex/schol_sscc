@@ -2,7 +2,11 @@ import React, { useEffect, useState } from "react";
 import { getProfile, User } from "../services/auth";
 import { BookOpen, Users, ClipboardCheck, Award } from "lucide-react";
 
-const Widgets = () => {
+interface WidgetsProps {
+  minHeight?: string; // <-- nuevo prop opcional
+}
+
+const Widgets: React.FC<WidgetsProps> = ({ minHeight }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -21,27 +25,31 @@ const Widgets = () => {
     );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-indigo-200 flex flex-col items-center justify-center px-6 py-12">
-      <div className="max-w-5xl w-full bg-white rounded-3xl shadow-2xl p-10 border border-gray-100 text-center">
+    <div
+        style={{ minHeight: "80vh" }}
+        className="bg-gradient-to-br from-blue-100 to-indigo-200 flex flex-col items-center justify-center"
+      >
+      <div className="max-w-5xl w-full p-6 bg-white rounded-3xl shadow-2xl border border-gray-100 text-center">
         {/* Encabezado con saludo */}
         <div className="mb-8">
-          {user && (
-            <h2 className="text-xl text-gray-600 mb-2">
-              👋 Bienvenido,{" "}
-              <span className="font-semibold text-blue-600">{user.name}</span>
-            </h2>
-          )}
+          
           <h1 className="text-4xl font-extrabold text-gray-800">
             Sistema de Exámenes — Colegio SSCC
           </h1>
           <p className="text-gray-600 text-lg mt-3 max-w-3xl mx-auto">
-            Bienvenido al sistema de evaluación en línea del{" "}
-            <span className="font-semibold text-blue-600">
-              Colegio Sagrados Corazones (SSCC)
-            </span>.  
-            Aquí podrás gestionar, rendir y calificar exámenes de manera rápida,
-            organizada y segura.
-          </p>
+  Bienvenido al sistema de evaluación en línea del{" "}
+  <a
+    href="https://www.sagradoscorazonesa.org"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="font-semibold text-blue-600 hover:underline hover:text-blue-800 transition-colors"
+  >
+    Colegio Sagrados Corazones (SSCC)
+  </a>.  
+  Aquí podrás gestionar, rendir y calificar exámenes de manera rápida,
+  organizada y segura.
+</p>
+
         </div>
 
         {/* Sección de widgets informativos */}

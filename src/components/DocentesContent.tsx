@@ -185,7 +185,7 @@ const DocentesTable: React.FC = () => {
             className="pl-10 pr-8 py-2 border border-gray-300 rounded-full w-64 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
           />
         <button
-          onClick={() => setCreateModalOpen(true)}
+          onClick={() => setCreateModalOpen(true) }
           className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-1"
           title="Nuevo Docente"
         >
@@ -268,7 +268,7 @@ const DocentesTable: React.FC = () => {
       </div>
 
       {/* Modales */}
-      <CreateDocenteModal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} onCreate={(newDocente) => setDocentes(prev => [newDocente, ...prev])} />
+      <CreateDocenteModal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} onCreate={(newDocente) => setDocentes(prev => [...prev,newDocente])} />
       {editModalOpen && <EditDocenteModal isOpen={editModalOpen} onClose={() => setEditModalOpen(false)} docenteId={selectedDocenteId} onUpdate={handleUpdateDocente} />}
       {asignarModalOpen && selectedDocenteAsigId && <AsignarMateriasModal isOpen={asignarModalOpen} onClose={() => setAsignarModalOpen(false)} docenteAsigId={selectedDocenteAsigId} />}
 

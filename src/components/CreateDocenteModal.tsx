@@ -58,7 +58,7 @@ const CreateDocenteModal: React.FC<CreateDocenteModalProps> = ({ isOpen, onClose
 
     try {
       const res = await api.post("/usuarios/create/docente", formData);
-
+      if (onSuccess) onSuccess();
       // SweetAlert2 éxito
       await Swal.fire({
         icon: 'success',
