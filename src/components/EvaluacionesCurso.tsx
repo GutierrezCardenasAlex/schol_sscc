@@ -25,51 +25,51 @@ interface CronometroResponse {
 
 const EvaluacionesCurso: React.FC = () => {
   const [evaluaciones, setEvaluaciones] = useState<Evaluacion[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Carga inicial
+  const [updating, setUpdating] = useState(false); // Actualización en segundo plano
   const [error, setError] = useState<string | null>(null);
   const [disabledExams, setDisabledExams] = useState<number[]>([]);
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const alumno_id = user?.user_id;
 
+  const fetchEvaluaciones = async () => {
+    try {
+      if (!loading) setUpdating(true); // Mostrar spinner de actualización solo si no es la carga inicial
+      const res = await api.get<Evaluacion[]>(`/evaluacion/curso/${user?.curso_id}`);
+      const data = res.data;
 
+      const newDisabledExams: number[] = [];
 
-
-  useEffect(() => {
-    const fetchEvaluaciones = async () => {
-      try {
-        const res = await api.get<Evaluacion[]>(`/evaluacion/curso/${user?.curso_id}`);
-        const data = res.data;
-
-        // 🔹 Verificamos el estado de cada examen con /examen/cronometro
-        const checkExamStatus = async (examen_id: number) => {
+      await Promise.all(
+        data.map(async (eva) => {
           try {
             const cronometro = await api.post<CronometroResponse>("/examen/cronometro", {
               alumno_id,
-              examen_id,
+              examen_id: eva.id,
             });
-            // Si está finalizado, se agrega a la lista de desactivados
             if (cronometro.data.finalizado) {
-              setDisabledExams((prev) => [...prev, examen_id]);
+              newDisabledExams.push(eva.id);
             }
-          } catch {
-            // Si falla la consulta, no lo desactiva
-          }
-        };
+          } catch {}
+        })
+      );
 
-        // 🔹 Ejecutamos la verificación de cada examen
-        await Promise.all(data.map((eva) => checkExamStatus(eva.id)));
+      setEvaluaciones(data);
+      setDisabledExams(newDisabledExams);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Error al obtener las evaluaciones");
+      Swal.fire("Error", "No se pudieron cargar las evaluaciones", "error");
+    } finally {
+      setLoading(false);
+      setUpdating(false);
+    }
+  };
 
-        setEvaluaciones(data);
-      } catch (err: any) {
-        setError(err.response?.data?.message || "Error al obtener las evaluaciones");
-        Swal.fire("Error", "No se pudieron cargar las evaluaciones", "error");
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  useEffect(() => {
     fetchEvaluaciones();
+    const interval = setInterval(fetchEvaluaciones, 10000); // Actualiza cada 10 segundos
+    return () => clearInterval(interval);
   }, []);
 
   const handleEmpezar = async (examen_id: number) => {
@@ -100,7 +100,7 @@ const EvaluacionesCurso: React.FC = () => {
   if (loading)
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-900"></div>
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600"></div>
       </div>
     );
 
@@ -108,12 +108,18 @@ const EvaluacionesCurso: React.FC = () => {
     return <p className="text-red-500 font-medium text-center mt-6">Error: {error}</p>;
 
   return (
-    <div className="p-6">
+    <div className="p-6 relative">
       <h2 className="text-3xl font-bold mb-6 text-gray-800 text-center">
         📘 Evaluaciones del Curso
       </h2>
-      <h1>{alumno_id}</h1>
-      
+
+      {/* Spinner de actualización en tiempo real */}
+      {updating && (
+        <div className="flex justify-center items-center mb-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-4 border-blue-500 mr-2"></div>
+          <span className="text-blue-600 font-medium">🔄 Actualizando datos de exámenes...</span>
+        </div>
+      )}
 
       {evaluaciones.length > 0 ? (
         <div className="overflow-x-auto border rounded-lg shadow-lg">
@@ -139,9 +145,7 @@ const EvaluacionesCurso: React.FC = () => {
                     <td className="px-6 py-4 text-gray-700">{eva.curso_nombre}</td>
                     <td className="px-6 py-4 text-gray-700">{eva.materia_nombre}</td>
                     <td className="px-6 py-4 text-gray-700">{eva.docente_nombre}</td>
-                    <td className="px-6 py-4 text-gray-700 text-center">
-                      {eva.duracion_minutos}
-                    </td>
+                    <td className="px-6 py-4 text-gray-700 text-center">{eva.duracion_minutos}</td>
                     <td className="px-6 py-4 text-center">
                       <button
                         onClick={() => handleEmpezar(eva.id)}

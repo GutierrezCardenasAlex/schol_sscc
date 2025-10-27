@@ -1,9 +1,8 @@
 import React, { useState, useRef } from "react";
 import api from "../services/api";
+import Swal from "sweetalert2";
 import {
   Upload,
-  Users,
-  FileSpreadsheet,
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
@@ -73,8 +72,28 @@ const InteractiveSequentialImport: React.FC = () => {
     return res.data;
   };
 
+  const confirmImport = async (message: string) => {
+    const result = await Swal.fire({
+      title: "⚠️ Atención",
+      html: `<p>${message}</p><p class="text-sm text-gray-600 mt-2">Si deseas cambiar el archivo, puedes cancelarlo y subir uno nuevo.</p>`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, continuar",
+      cancelButtonText: "Cancelar / Cambiar archivo",
+      reverseButtons: true,
+      focusCancel: true,
+    });
+    return result.isConfirmed;
+  };
+
   const handleUserImport = async () => {
     if (!userFile) return setError("Selecciona un archivo de usuarios.");
+
+    const confirmed = await confirmImport(
+      "Esta acción borrará los datos existentes en la base de datos."
+    );
+    if (!confirmed) return;
+
     setLoading(true);
     setProgress(0);
     setError(null);
@@ -84,7 +103,6 @@ const InteractiveSequentialImport: React.FC = () => {
     try {
       const res = await uploadFile(userFile, "/import/users-all", 0, 50);
 
-      // ✅ Acepta si el backend devuelve 'Datos importados correctamente'
       if (
         !res.success &&
         !res.message?.toLowerCase().includes("correctamente")
@@ -95,7 +113,7 @@ const InteractiveSequentialImport: React.FC = () => {
       setSummary((prev) => ({
         ...prev,
         datos: res.summary || {},
-        progreso: prev.asignaciones ? 100 : 50, // si ya hay asignaciones => 100%, sino 50%
+        progreso: prev.asignaciones ? 100 : 50,
       }));
       setMessage(res.message || "✅ Usuarios importados correctamente.");
       setConfirmNext(true);
@@ -110,6 +128,12 @@ const InteractiveSequentialImport: React.FC = () => {
 
   const handleAsigImport = async () => {
     if (!asigFile) return setError("Selecciona un archivo de asignaciones.");
+
+    const confirmed = await confirmImport(
+      "Esta acción puede sobrescribir asignaciones existentes."
+    );
+    if (!confirmed) return;
+
     setLoading(true);
     setError(null);
     setMessage(null);
@@ -190,6 +214,12 @@ const InteractiveSequentialImport: React.FC = () => {
                     Archivo cargado correctamente
                   </p>
                   <p className="text-sm text-gray-600 mt-1">{userFile.name}</p>
+                  <button
+                    className="mt-2 text-sm text-blue-600 underline"
+                    onClick={() => setUserFile(null)}
+                  >
+                    Cambiar archivo
+                  </button>
                 </div>
               </div>
             ) : (
@@ -231,6 +261,12 @@ const InteractiveSequentialImport: React.FC = () => {
             >
               Sí, subir asignaciones
             </button>
+            <button
+              onClick={handleSkipNext}
+              className="bg-gray-400 hover:bg-gray-500 text-white px-5 py-2 rounded-lg font-semibold"
+            >
+              Omitir
+            </button>
           </div>
         </div>
       )}
@@ -247,6 +283,12 @@ const InteractiveSequentialImport: React.FC = () => {
                     Archivo cargado correctamente
                   </p>
                   <p className="text-sm text-gray-600 mt-1">{asigFile.name}</p>
+                  <button
+                    className="mt-2 text-sm text-green-600 underline"
+                    onClick={() => setAsigFile(null)}
+                  >
+                    Cambiar archivo
+                  </button>
                 </div>
               </div>
             ) : (
@@ -287,29 +329,27 @@ const InteractiveSequentialImport: React.FC = () => {
 
       {/* Resumen final */}
       {step === 4 && summary && (
-  <div className="bg-gray-50 border border-gray-200 p-5 rounded-lg mt-6 shadow-inner">
-    <h3 className="font-semibold text-lg mb-3 text-gray-700 flex items-center">
-      <CheckCircle className="text-green-500 mr-2" /> Resumen Final
-    </h3>
+        <div className="bg-gray-50 border border-gray-200 p-5 rounded-lg mt-6 shadow-inner">
+          <h3 className="font-semibold text-lg mb-3 text-gray-700 flex items-center">
+            <CheckCircle className="text-green-500 mr-2" /> Resumen Final
+          </h3>
 
-    {summary.progreso && (
-      <div className="mb-4">
-        <div className="flex justify-between mb-1 text-sm font-medium text-gray-700">
-          <span>Progreso total</span>
-          <span>{summary.progreso}%</span>
+          {summary.progreso && (
+            <div className="mb-4">
+              <div className="flex justify-between mb-1 text-sm font-medium text-gray-700">
+                <span>Progreso total</span>
+                <span>{summary.progreso}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div
+                  className="bg-green-600 h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${summary.progreso}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-3">
-          <div
-            className="bg-green-600 h-3 rounded-full transition-all duration-500"
-            style={{ width: `${summary.progreso}%` }}
-          />
-        </div>
-      </div>
-    )}
-
-  </div>
-)}
-
+      )}
 
       {loading && (
         <button

@@ -102,13 +102,13 @@ const Sidebar: React.FC<SidebarProps> = ({ setActiveContent }) => {
                   onClick={() => setActiveContent("evaluaciones")}
                   small
                 />
-                <SidebarButton
+                {/* <SidebarButton
                   icon="clipboard-check"
                   label="Evaluaciones Cursos"
                   collapsed={isCollapsed}
                   onClick={() => setActiveContent("evaluacionescursos")}
                   small
-                />
+                /> */}
                 <SidebarButton
                   icon="upload"
                   label="Importar Excel"
