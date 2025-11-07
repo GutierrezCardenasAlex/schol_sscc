@@ -84,6 +84,12 @@ const Sidebar: React.FC<SidebarProps> = ({ setActiveContent }) => {
               collapsed={isCollapsed}
               onClick={() => setActiveContent("materias")}
             />
+            <SidebarButton
+              icon="book"
+              label="Reportes"
+              collapsed={isCollapsed}
+              onClick={() => setActiveContent("reportes")}
+            />
 
             {/* ADMINISTRADOR */}
             <SidebarButton

@@ -13,6 +13,8 @@ import DocentesTable from "../components/DocentesContent";
 import EvaluacionesTable from "../components/EvaluacionesContent";
 import EvaluacionesCurso from "../components/EvaluacionesCurso";
 import { Outlet } from "react-router-dom";
+import ReportContent from "../components/ReportsContent";
+
 const DashboardPage: React.FC = () => {
   // Estado para controlar el contenido mostrado
   const [activeContent, setActiveContent] = useState("dashboard");
@@ -35,6 +37,7 @@ const DashboardPage: React.FC = () => {
         {activeContent === "evaluaciones" && <EvaluacionesTable />}
         {activeContent === "evaluacionescursos" && <EvaluacionesCurso />}
         {activeContent === "importexcel" && <InteractiveSequentialImport />}
+        {activeContent === "reportes" && <ReportContent />}
       </main>
       {/* <TestApi /> */}
       <Outlet />
