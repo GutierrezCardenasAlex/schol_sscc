@@ -10,7 +10,7 @@ interface Evaluacion {
   estado: boolean;
   curso_nombre: string;
   materia_nombre: string;
-  docente_nombre: string;
+  docente_nombre: string; 
   duracion_minutos: number;
 }
 
@@ -85,7 +85,7 @@ const EvaluacionesCurso: React.FC = () => {
     if (result.isConfirmed) {
       try {
         await api.post("/examen/empezar", { alumno_id, examen_id });
-        localStorage.setItem("ultimo_examen", JSON.stringify({ alumno_id, examen_id }));
+        localStorage.setItem("ultimo_examen", JSON.stringify({ alumno_id, examen_id, duracion_minutos: evaluaciones.find(e => e.id === examen_id)?.duracion_minutos }));
         Swal.fire("Éxito", "Examen iniciado correctamente", "success").then(() => {
           navigate("/examen-view");
         });

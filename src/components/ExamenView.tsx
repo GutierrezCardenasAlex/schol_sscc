@@ -34,7 +34,7 @@ const ExamenView: React.FC = () => {
 
   const data =
     location.state || JSON.parse(localStorage.getItem("ultimo_examen") || "{}");
-  const { alumno_id, examen_id } = data as { alumno_id: number; examen_id: number };
+  const { alumno_id, examen_id, duracion_minutos } = data as { alumno_id: number; examen_id: number; duracion_minutos: number };
 
   const [examen, setExamen] = useState<Examen | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,39 @@ const ExamenView: React.FC = () => {
   const [respuestas, setRespuestas] = useState<{ [preguntaId: number]: number }>({});
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [finalizado, setFinalizado] = useState(false);
-  const [tiempoRestante, setTiempoRestante] = useState<number>(0);
+  const [tiempoRestante, setTiempoRestante] = useState<number>(duracion_minutos * 60);
+
+  const tiempoStorageKey = `examen_${examen_id}_tiempo`;
+
+  // Inicializar tiempo restante desde localStorage si existe
+  useEffect(() => {
+    const savedTime = localStorage.getItem(tiempoStorageKey);
+    if (savedTime) {
+      const tiempo = Number(savedTime);
+      if (!isNaN(tiempo) && tiempo > 0) {
+        setTiempoRestante(tiempo);
+      }
+    }
+  }, [tiempoStorageKey]);
+
+  // Guardar el tiempo restante y manejar finalización automática
+  useEffect(() => {
+    if (finalizado) return;
+
+    const interval = setInterval(() => {
+      setTiempoRestante((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          handleFinalizar(true); // Finalización automática
+          return 0;
+        }
+        localStorage.setItem(tiempoStorageKey, String(prev - 1));
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [finalizado, tiempoStorageKey]);
 
   useEffect(() => {
     if (!alumno_id || !examen_id) {
@@ -51,8 +83,8 @@ const ExamenView: React.FC = () => {
       });
       return;
     }
-    localStorage.setItem("ultimo_examen", JSON.stringify({ alumno_id, examen_id }));
-  }, [alumno_id, examen_id, navigate]);
+    localStorage.setItem("ultimo_examen", JSON.stringify({ alumno_id, examen_id, duracion_minutos }));
+  }, [alumno_id, examen_id, duracion_minutos, navigate]);
 
   useEffect(() => {
     const fetchExamen = async () => {
@@ -66,11 +98,6 @@ const ExamenView: React.FC = () => {
       try {
         const resExamen = await api.get(`/evaluacion/${examen_id}`);
         setExamen(resExamen.data.examen);
-
-        const resTiempo = await api.post(`/examen/cronometro`, { examen_id, alumno_id });
-        const tiempo = Number(resTiempo.data.tiempo_restante);
-        setTiempoRestante(!isNaN(tiempo) && tiempo > 0 ? tiempo : 60);
-
         Swal.close();
       } catch (err) {
         console.error(err);
@@ -89,23 +116,6 @@ const ExamenView: React.FC = () => {
     fetchExamen();
   }, [alumno_id, examen_id, navigate]);
 
-  useEffect(() => {
-    if (!tiempoRestante || finalizado) return;
-
-    const interval = setInterval(() => {
-      setTiempoRestante((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          handleFinalizar(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [tiempoRestante, finalizado]);
-
   const handleSelectOpcion = (preguntaId: number, opcionId: number) => {
     if (finalizado) return;
     setRespuestas((prev) => ({ ...prev, [preguntaId]: opcionId }));
@@ -113,7 +123,7 @@ const ExamenView: React.FC = () => {
 
   const handleNext = () =>
     setCurrentIndex((idx) => Math.min(idx + 1, examen!.preguntas.length - 1));
-  const handlePrev = () => setCurrentIndex((idx) => Math.max(idx - 1, 0));
+  const handlePrev = () => setCurrentIndex((idx) => Math.max(idx - 0, 0));
 
   const handleFinalizar = async (auto = false) => {
     if (!examen || finalizado) return;
@@ -144,9 +154,10 @@ const ExamenView: React.FC = () => {
 
       setResultado(res.data);
       setFinalizado(true);
+      localStorage.removeItem(tiempoStorageKey);
 
       Swal.fire({
-        title: "Examen finalizado 🎉",
+        title: auto ? "Tiempo finalizado ⏰" : "Examen finalizado 🎉",
         text: auto
           ? "El tiempo terminó. Tus respuestas fueron guardadas automáticamente."
           : "Tus respuestas han sido enviadas correctamente.",

@@ -15,9 +15,14 @@ const Header: React.FC = () => {
     }, []);
   return (
     <header className="flex justify-between items-center mb-2">
+      <img
+          src="/logo.jpg"
+          alt="Logo"
+          className="w-16 h-16 object-cover rounded-full"
+        />
       {user && (
             <h2 className="text-xl text-gray-600 mb-2">
-              👋 Bienvenido,{" "}
+              Bienvenido,{" "}
               <span className="font-semibold text-blue-600">{user.name}</span>
             </h2>
           )}
