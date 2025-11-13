@@ -234,10 +234,10 @@ const ExamenView: React.FC = () => {
             <div className="bg-gray-50 p-6 rounded-lg mb-4 shadow-inner flex flex-col md:flex-row gap-4">
               {preguntaActual.imagen && (
                 <img
-                  src={preguntaActual.imagen}
-                  alt=""
-                  className="max-w-full md:max-w-[250px] rounded"
-                />
+  src={preguntaActual.imagen}
+  alt=""
+  className="w-[80%] h-[50%] rounded object-cover"
+/>
               )}
               <p className="text-lg text-gray-800">{preguntaActual.enunciado}</p>
             </div>
