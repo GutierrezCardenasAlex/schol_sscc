@@ -1,17 +1,12 @@
 import React, { useState, useRef } from "react";
 import api from "../services/api";
 import Swal from "sweetalert2";
-import {
-  Upload,
-  CheckCircle,
-  Loader2,
-  XCircle,
-} from "lucide-react";
+import { Upload, CheckCircle, Loader2, XCircle } from "lucide-react";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onUploaded: () => void; // 👈 función que viene del padre
+  onUploaded: () => void; // función que viene del padre para refrescar tabla
 }
 
 const SubirEvaluacionModal: React.FC<Props> = ({ isOpen, onClose, onUploaded }) => {
@@ -22,29 +17,28 @@ const SubirEvaluacionModal: React.FC<Props> = ({ isOpen, onClose, onUploaded }) 
 
   if (!isOpen) return null;
 
-  // ✅ Validar archivos Excel (.xls o .xlsx)
-  const validateExcel = (file: File) => {
-    const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-    return ext === ".xls" || ext === ".xlsx";
+  // ✅ Validar archivos Excel o ZIP
+  const validateFile = (file: File) => {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    return ext === "xls" || ext === "xlsx" || ext === "zip";
   };
 
   // ✅ Manejar selección de archivos
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files ? Array.from(e.target.files) : [];
-    const invalidFile = selectedFiles.find(f => !validateExcel(f));
+    const invalidFile = selectedFiles.find(f => !validateFile(f));
     if (invalidFile) {
-      Swal.fire("Error", "Solo se permiten archivos Excel (.xls o .xlsx)", "error");
+      Swal.fire("Error", "Solo se permiten archivos Excel (.xls/.xlsx) o ZIP (.zip)", "error");
       return;
     }
 
-    // Acumula archivos anteriores con nuevos
-    setFiles(prevFiles => [...prevFiles, ...selectedFiles]);
+    setFiles(prev => [...prev, ...selectedFiles]);
   };
 
   // ✅ Subir los archivos al servidor
   const handleUpload = async () => {
     if (files.length === 0) {
-      return Swal.fire("Error", "Debes seleccionar al menos un archivo Excel.", "error");
+      return Swal.fire("Error", "Debes seleccionar al menos un archivo.", "error");
     }
 
     setLoading(true);
@@ -52,17 +46,29 @@ const SubirEvaluacionModal: React.FC<Props> = ({ isOpen, onClose, onUploaded }) 
     abortController.current = new AbortController();
 
     try {
-      const form = new FormData();
-      files.forEach((file) => form.append("archivos[]", file));
+      for (const file of files) {
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        let url = "";
 
-      await api.post("/import/evaluation-all", form, {
-        headers: { "Content-Type": "multipart/form-data" },
-        signal: abortController.current.signal,
-        onUploadProgress: (e) => {
-          const percent = Math.round((e.loaded * 100) / (e.total || 1));
-          setProgress(percent);
-        },
-      });
+        if (ext === "zip") url = "/import/evaluation_pre";
+        else if (ext === "xls" || ext === "xlsx") url = "/import/evaluation-all";
+        else {
+          Swal.fire("Error", "Formato de archivo no permitido.", "error");
+          continue;
+        }
+
+        const formData = new FormData();
+        formData.append("archivos[]", file);
+
+        await api.post(url, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+          signal: abortController.current?.signal,
+          onUploadProgress: (e) => {
+            const percent = Math.round((e.loaded * 100) / (e.total || 1));
+            setProgress(percent);
+          },
+        });
+      }
 
       Swal.fire({
         icon: "success",
@@ -72,18 +78,13 @@ const SubirEvaluacionModal: React.FC<Props> = ({ isOpen, onClose, onUploaded }) 
         showConfirmButton: false,
       });
 
-      // 👇 Refresca la tabla principal automáticamente
+      // Refrescar tabla padre
       onUploaded();
-
-      // Limpia y cierra
       setFiles([]);
       onClose();
-
     } catch (err: any) {
       if (err.name === "CanceledError") {
         Swal.fire("Cancelado", "Carga cancelada por el usuario.", "warning");
-      } else if (err.response?.data?.message) {
-        Swal.fire("Error", err.response.data.message, "error");
       } else {
         Swal.fire("Error", "Error al subir los archivos.", "error");
       }
@@ -103,7 +104,6 @@ const SubirEvaluacionModal: React.FC<Props> = ({ isOpen, onClose, onUploaded }) 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 relative">
-        
         {/* Botón cerrar */}
         <button
           onClick={onClose}
@@ -131,11 +131,11 @@ const SubirEvaluacionModal: React.FC<Props> = ({ isOpen, onClose, onUploaded }) 
             <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-green-400 rounded-lg cursor-pointer hover:bg-green-100 transition">
               <Upload className="w-8 h-8 text-green-500 mb-2" />
               <span className="text-sm text-gray-600">
-                Haz clic o arrastra tus archivos Excel aquí
+                Haz clic o arrastra tus archivos Excel o ZIP aquí
               </span>
               <input
                 type="file"
-                accept=".xls,.xlsx"
+                accept=".xls,.xlsx,.zip"
                 className="hidden"
                 multiple
                 onChange={handleFileChange}
