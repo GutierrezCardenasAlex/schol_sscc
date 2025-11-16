@@ -49,6 +49,7 @@ const ExamenView: React.FC = () => {
   );
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [finalizado, setFinalizado] = useState(false);
+
   const [tiempoRestante, setTiempoRestante] = useState<number>(
     duracion_minutos * 60
   );
@@ -66,26 +67,29 @@ const ExamenView: React.FC = () => {
     }
   }, [tiempoStorageKey]);
 
-  // Contador regresivo
+  // === CONTADOR REGRESIVO (CORREGIDO, SEGURO Y ESTABLE) ===
   useEffect(() => {
-    if (finalizado) return;
+    if (finalizado || !examen) return; // evita errores si examen es null
 
     const interval = setInterval(() => {
       setTiempoRestante((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          handleFinalizar(true); // Auto-finalizar
+          setTiempoRestante(0);
+          handleFinalizar(true); // auto-finalizar
           return 0;
         }
-        localStorage.setItem(tiempoStorageKey, String(prev - 1));
-        return prev - 1;
+
+        const nuevoTiempo = prev - 1;
+        localStorage.setItem(tiempoStorageKey, String(nuevoTiempo));
+        return nuevoTiempo;
       });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [finalizado, tiempoStorageKey]);
+  }, [finalizado, examen]); // solo se activa cuando examen está cargado
 
-  // Guardar últimos datos en localStorage
+  // Guardar datos del examen actual
   useEffect(() => {
     if (!alumno_id || !examen_id) {
       Swal.fire("Error", "No se encontró la información del examen", "error").then(
@@ -99,7 +103,7 @@ const ExamenView: React.FC = () => {
     );
   }, [alumno_id, examen_id, duracion_minutos, navigate]);
 
-  // Cargar examen
+  // Cargar examen desde API
   useEffect(() => {
     const fetchExamen = async () => {
       Swal.fire({
@@ -126,24 +130,26 @@ const ExamenView: React.FC = () => {
     fetchExamen();
   }, [examen_id, navigate]);
 
-  // Seleccionar opción
+  // Marcar respuesta
   const handleSelectOpcion = (preguntaId: number, opcionId: number) => {
     if (finalizado) return;
     setRespuestas((prev) => ({ ...prev, [preguntaId]: opcionId }));
   };
 
-  // 🚀 Navegación mejorada
+  // Navegación entre preguntas
   const handleNext = () => {
-    setCurrentIndex((idx) => Math.min(idx + 1, examen!.preguntas.length - 1));
+    if (!examen) return;
+    setCurrentIndex((idx) => Math.min(idx + 1, examen.preguntas.length - 1));
   };
 
   const handlePrev = () => {
-    setCurrentIndex((idx) => Math.max(idx - 1, 0)); // ← corregido
+    setCurrentIndex((idx) => Math.max(idx - 1, 0));
   };
 
-  // Finalizar examen
+  // === FINALIZAR EXAMEN (CORREGIDO) ===
   const handleFinalizar = async (auto = false) => {
-    if (!examen || finalizado) return;
+    if (finalizado) return;
+    if (!examen) return; // evita error "preguntas of null"
 
     if (!auto) {
       const confirm = await Swal.fire({
@@ -159,7 +165,7 @@ const ExamenView: React.FC = () => {
 
     const respuestasArray = examen.preguntas.map((p) => ({
       pregunta_id: p.id,
-      opcion_id: respuestas[p.id] ?? -1, // null => -1
+      opcion_id: respuestas[p.id] ?? -1,
     }));
 
     try {
@@ -208,12 +214,10 @@ const ExamenView: React.FC = () => {
     <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
       <div className="bg-white shadow-lg rounded-2xl p-6 w-full max-w-3xl">
 
-        {/* Título */}
         <h1 className="text-3xl font-bold mb-2 text-center text-indigo-700">
           {examen.titulo}
         </h1>
 
-        {/* Contador */}
         <div className="text-center text-lg font-semibold mb-4">
           Tiempo restante:{" "}
           <span
@@ -223,26 +227,23 @@ const ExamenView: React.FC = () => {
           </span>
         </div>
 
-        {/* ➤ Progreso */}
         <p className="text-center text-gray-700 mb-4">
           Pregunta <b>{currentIndex + 1}</b> de <b>{examen.preguntas.length}</b>
         </p>
 
         {!finalizado && (
           <>
-            {/* Enunciado */}
             <div className="bg-gray-50 p-6 rounded-lg mb-4 shadow-inner flex flex-col md:flex-row gap-4">
               {preguntaActual.imagen && (
                 <img
-  src={preguntaActual.imagen}
-  alt=""
-  className="w-[80%] h-[50%] rounded object-cover"
-/>
+                  src={preguntaActual.imagen}
+                  alt=""
+                  className="w-[80%] h-[50%] rounded object-cover"
+                />
               )}
               <p className="text-lg text-gray-800">{preguntaActual.enunciado}</p>
             </div>
 
-            {/* Opciones */}
             <div className="bg-gray-50 p-6 rounded-lg mb-4 shadow-inner">
               {preguntaActual.opciones.map((op) => (
                 <label key={op.id} className="block mb-3 cursor-pointer">
@@ -251,7 +252,9 @@ const ExamenView: React.FC = () => {
                     name={`pregunta-${preguntaActual.id}`}
                     value={op.id}
                     checked={respuestas[preguntaActual.id] === op.id}
-                    onChange={() => handleSelectOpcion(preguntaActual.id, op.id)}
+                    onChange={() =>
+                      handleSelectOpcion(preguntaActual.id, op.id)
+                    }
                     className="mr-3 accent-indigo-600"
                   />
                   {op.texto}
@@ -259,7 +262,6 @@ const ExamenView: React.FC = () => {
               ))}
             </div>
 
-            {/* Botones navegación */}
             <div className="flex justify-between mb-4">
               <button
                 onClick={handlePrev}
@@ -287,7 +289,6 @@ const ExamenView: React.FC = () => {
           </>
         )}
 
-        {/* Resultado */}
         {finalizado && resultado && (
           <div className="mt-6 bg-green-100 p-6 rounded-lg text-center">
             <h3 className="font-semibold text-green-700 mb-2">
