@@ -1,366 +1,120 @@
-import React, { useState, useRef } from "react";
-import api from "../services/api";
-import Swal from "sweetalert2";
-import {
-  Upload,
-  CheckCircle,
-  AlertCircle,
-} from "lucide-react";
+import React, { useEffect, useRef, useState } from 'react';
+import api from '../services/api';
+import Swal from 'sweetalert2';
+import { CheckCircle2, Clock3, FileSpreadsheet, RefreshCw, UploadCloud, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 
-interface Summary {
-  total?: number;
-  exitosas?: number;
-  errores?: number;
-  detallesErrores?: any[];
-}
-
-const InteractiveSequentialImport: React.FC = () => {
-  const [userFile, setUserFile] = useState<File | null>(null);
-  const [asigFile, setAsigFile] = useState<File | null>(null);
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<{
-    datos?: Summary;
-    asignaciones?: Summary;
-    progreso?: number;
-  }>({});
-  const [confirmNext, setConfirmNext] = useState(false);
-  const abortController = useRef<AbortController | null>(null);
-
-  const validateExcel = (file: File) => {
-    const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-    return ext === ".xls" || ext === ".xlsx";
-  };
-
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    setFile: any
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!validateExcel(file)) {
-      setError("Solo se permiten archivos Excel (.xls/.xlsx)");
-      setFile(null);
-      return;
-    }
-    setError(null);
-    setFile(file);
-  };
-
-  const uploadFile = async (
-    file: File,
-    url: string,
-    startPercent: number,
-    endPercent: number
-  ) => {
-    const form = new FormData();
-    form.append("file", file);
-
-    const res = await api.post(url, form, {
-      headers: { "Content-Type": "multipart/form-data" },
-      signal: abortController.current?.signal,
-      onUploadProgress: (e) => {
-        const percent =
-          startPercent +
-          (e.loaded / (e.total || 1)) * (endPercent - startPercent);
-        setProgress(Math.round(percent));
-      },
-    });
-    return res.data;
-  };
-
-  const confirmImport = async (message: string) => {
-    const result = await Swal.fire({
-      title: "⚠️ Atención",
-      html: `<p>${message}</p><p class="text-sm text-gray-600 mt-2">Si deseas cambiar el archivo, puedes cancelarlo y subir uno nuevo.</p>`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Sí, continuar",
-      cancelButtonText: "Cancelar / Cambiar archivo",
-      reverseButtons: true,
-      focusCancel: true,
-    });
-    return result.isConfirmed;
-  };
-
-  const handleUserImport = async () => {
-    if (!userFile) return setError("Selecciona un archivo de usuarios.");
-
-    const confirmed = await confirmImport(
-      "Esta acción borrará los datos existentes en la base de datos."
-    );
-    if (!confirmed) return;
-
-    setLoading(true);
-    setProgress(0);
-    setError(null);
-    setMessage(null);
-    abortController.current = new AbortController();
-
-    try {
-      const res = await uploadFile(userFile, "/import/users-all", 0, 50);
-
-      if (
-        !res.success &&
-        !res.message?.toLowerCase().includes("correctamente")
-      ) {
-        throw new Error(res.message || "Error importando usuarios");
-      }
-
-      setSummary((prev) => ({
-        ...prev,
-        datos: res.summary || {},
-        progreso: prev.asignaciones ? 100 : 50,
-      }));
-      setMessage(res.message || "✅ Usuarios importados correctamente.");
-      setConfirmNext(true);
-      setStep(2);
-    } catch (err: any) {
-      setError(err.message || "Error desconocido");
-    } finally {
-      setLoading(false);
-      setProgress(0);
-    }
-  };
-
-  const handleAsigImport = async () => {
-    if (!asigFile) return setError("Selecciona un archivo de asignaciones.");
-
-    const confirmed = await confirmImport(
-      "Esta acción puede sobrescribir asignaciones existentes."
-    );
-    if (!confirmed) return;
-
-    setLoading(true);
-    setError(null);
-    setMessage(null);
-    setProgress(50);
-    abortController.current = new AbortController();
-
-    try {
-      const res = await uploadFile(asigFile, "/import/asignacion-all", 50, 100);
-
-      if (
-        !res.success &&
-        !res.message?.toLowerCase().includes("correctamente")
-      ) {
-        throw new Error(res.message || "Error importando asignaciones");
-      }
-
-      setSummary((prev) => ({
-        ...prev,
-        asignaciones: res.summary || {},
-        progreso: 100,
-      }));
-      setMessage(
-        res.message ||
-          "✅ Asignaciones importadas correctamente. Proceso finalizado."
-      );
-      setStep(4);
-    } catch (err: any) {
-      setError(err.message || "Error desconocido");
-    } finally {
-      setLoading(false);
-      setProgress(0);
-    }
-  };
-
-  const handleCancel = () => {
-    if (abortController.current) abortController.current.abort();
-  };
-
-  const handleConfirmNext = () => {
-    setConfirmNext(false);
-    setStep(2);
-  };
-
-  const handleSkipNext = () => {
-    setConfirmNext(false);
-    setStep(4);
-    setMessage("Proceso finalizado sin subir asignaciones.");
-  };
-
-  return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-2xl shadow-xl mt-10">
-      <h2 className="text-3xl font-bold text-center mb-6 text-blue-700">
-        Importar Datos
-      </h2>
-
-      {error && (
-        <div className="flex items-center text-red-600 bg-red-50 border border-red-300 rounded-lg p-3 mb-3">
-          <AlertCircle className="mr-2" />
-          <span>{error}</span>
-        </div>
-      )}
-      {message && (
-        <div className="flex items-center text-green-700 bg-green-50 border border-green-300 rounded-lg p-3 mb-3">
-          <CheckCircle className="mr-2" />
-          <span>{message}</span>
-        </div>
-      )}
-
-      {/* Paso 1: Usuarios */}
-      {step === 1 && (
-        <div className="border rounded-lg p-6 bg-blue-50 shadow-sm">
-          <div className="flex items-center gap-3">
-            {userFile ? (
-              <div className="w-full text-center bg-blue-100 border border-blue-400 rounded-xl p-6 shadow-inner transition">
-                <div className="flex flex-col items-center">
-                  <CheckCircle className="text-green-600 w-12 h-12 mb-2 animate-bounce" />
-                  <p className="font-semibold text-blue-700 text-lg">
-                    Archivo cargado correctamente
-                  </p>
-                  <p className="text-sm text-gray-600 mt-1">{userFile.name}</p>
-                  <button
-                    className="mt-2 text-sm text-blue-600 underline"
-                    onClick={() => setUserFile(null)}
-                  >
-                    Cambiar archivo
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-blue-400 rounded-lg cursor-pointer hover:bg-blue-100 transition">
-                <Upload className="w-8 h-8 text-blue-500 mb-2" />
-                <span className="text-sm text-gray-600">
-                  Haz clic o arrastra tu archivo aquí
-                </span>
-                <input
-                  type="file"
-                  accept=".xls,.xlsx"
-                  className="hidden"
-                  onChange={(e) => handleFileChange(e, setUserFile)}
-                />
-              </label>
-            )}
-          </div>
-
-          <button
-            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold disabled:opacity-50"
-            disabled={loading || !userFile}
-            onClick={handleUserImport}
-          >
-            {loading ? "Importando..." : "Importar Datos"}
-          </button>
-        </div>
-      )}
-
-      {/* Confirmación para subir asignaciones */}
-      {confirmNext && step === 2 && (
-        <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-5 mt-5 text-center">
-          <p className="text-lg mb-3 font-medium text-yellow-800">
-            ¿Deseas subir el archivo de asignaciones ahora?
-          </p>
-          <div className="flex justify-center gap-4">
-            <button
-              onClick={handleConfirmNext}
-              className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-semibold"
-            >
-              Sí, subir asignaciones
-            </button>
-            <button
-              onClick={handleSkipNext}
-              className="bg-gray-400 hover:bg-gray-500 text-white px-5 py-2 rounded-lg font-semibold"
-            >
-              Omitir
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Paso 2: Asignaciones */}
-      {step === 2 && !confirmNext && (
-        <div className="border rounded-lg p-6 bg-green-50 shadow-sm mt-5">
-          <div className="flex items-center gap-3">
-            {asigFile ? (
-              <div className="w-full text-center bg-green-100 border border-green-400 rounded-xl p-6 shadow-inner transition">
-                <div className="flex flex-col items-center">
-                  <CheckCircle className="text-green-600 w-12 h-12 mb-2 animate-bounce" />
-                  <p className="font-semibold text-green-700 text-lg">
-                    Archivo cargado correctamente
-                  </p>
-                  <p className="text-sm text-gray-600 mt-1">{asigFile.name}</p>
-                  <button
-                    className="mt-2 text-sm text-green-600 underline"
-                    onClick={() => setAsigFile(null)}
-                  >
-                    Cambiar archivo
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-green-400 rounded-lg cursor-pointer hover:bg-green-100 transition">
-                <Upload className="w-8 h-8 text-green-500 mb-2" />
-                <span className="text-sm text-gray-600">
-                  Haz clic o arrastra tu archivo aquí
-                </span>
-                <input
-                  type="file"
-                  accept=".xls,.xlsx"
-                  className="hidden"
-                  onChange={(e) => handleFileChange(e, setAsigFile)}
-                />
-              </label>
-            )}
-          </div>
-
-          <button
-            className="mt-4 bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-semibold disabled:opacity-50"
-            disabled={loading || !asigFile}
-            onClick={handleAsigImport}
-          >
-            {loading ? "Importando..." : "Importar Asignaciones"}
-          </button>
-        </div>
-      )}
-
-      {/* Barra de progreso */}
-      {loading && (
-        <div className="w-full bg-gray-200 h-3 rounded mt-4 mb-2">
-          <div
-            className="bg-blue-600 h-3 rounded transition-all"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      )}
-
-      {/* Resumen final */}
-      {step === 4 && summary && (
-        <div className="bg-gray-50 border border-gray-200 p-5 rounded-lg mt-6 shadow-inner">
-          <h3 className="font-semibold text-lg mb-3 text-gray-700 flex items-center">
-            <CheckCircle className="text-green-500 mr-2" /> Resumen Final
-          </h3>
-
-          {summary.progreso && (
-            <div className="mb-4">
-              <div className="flex justify-between mb-1 text-sm font-medium text-gray-700">
-                <span>Progreso total</span>
-                <span>{summary.progreso}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div
-                  className="bg-green-600 h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${summary.progreso}%` }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {loading && (
-        <button
-          onClick={handleCancel}
-          className="mt-3 bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg font-semibold"
-        >
-          Cancelar Importación
-        </button>
-      )}
-    </div>
-  );
+type Kind = 'users' | 'assignments';
+type Summary = { total?: number; exitosas?: number; errores?: number; detallesErrores?: unknown[] };
+type Result = { success?: boolean; message?: string; summary?: Summary };
+type RecordItem = { hash: string; name: string; size: number; completedAt: string; summary?: Summary };
+type State = { users?: RecordItem; assignments?: RecordItem; history: Array<RecordItem & { kind: Kind }> };
+const KEY = 'school-imports-v3';
+const URL: Record<Kind, string> = { users: '/import/users-all', assignments: '/import/asignacion-all' };
+const NAME: Record<Kind, string> = { users: 'Usuarios', assignments: 'Asignaciones' };
+const readState = (): State => {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) { const parsed = JSON.parse(raw); return { users: parsed.users, assignments: parsed.assignments, history: Array.isArray(parsed.history) ? parsed.history : [] }; }
+    // Recover the earlier version's locally stored successes.
+    const old = JSON.parse(localStorage.getItem('school-imports-v2') || '{}');
+    return { users: old.users, assignments: old.assignments, history: [] };
+  } catch { return { history: [] }; }
 };
+async function hashFile(file: File): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest)).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+const InteractiveSequentialImport: React.FC = () => {
+  const [state, setState] = useState<State>(readState);
+  const [files, setFiles] = useState<Partial<Record<Kind, File>>>({});
+  const [editing, setEditing] = useState<Kind | null>(null);
+  const [busy, setBusy] = useState<Kind | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const locked = useRef(false);
+  const abort = useRef<AbortController | null>(null);
+  useEffect(() => { localStorage.setItem(KEY, JSON.stringify(state)); }, [state]);
+  const completed = Number(!!state.users) + Number(!!state.assignments);
 
+  const choose = (kind: Kind, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!/\.(xls|xlsx)$/i.test(file.name)) { setError('Solo se permiten archivos .xls o .xlsx'); return; }
+    setFiles(p => ({ ...p, [kind]: file }));
+    setError(''); setMessage('');
+  };
+  const upload = async (kind: Kind) => {
+    if (locked.current || busy) return;
+    if (kind === 'assignments' && !state.users) { setError('Primero importa usuarios.'); return; }
+    const file = files[kind];
+    if (!file) { setError(`Selecciona un archivo de ${NAME[kind].toLowerCase()}.`); return; }
+    locked.current = true;
+    setError(''); setMessage('');
+    try {
+      const hash = await hashFile(file);
+      if (state.history.some(h => h.kind === kind && h.hash === hash) || state[kind]?.hash === hash) {
+        setError('Este archivo ya fue importado en este navegador. Selecciona un archivo con cambios reales.'); return;
+      }
+      const replacing = !!state[kind];
+      const confirm = await Swal.fire({
+        title: replacing ? `Volver a importar ${NAME[kind].toLowerCase()}` : `Importar ${NAME[kind].toLowerCase()}`,
+        text: replacing
+          ? 'El archivo nuevo se enviará al mismo endpoint. El resultado sobre los registros existentes depende del controlador Laravel. No se modificará el historial anterior.'
+          : `¿Enviar ${file.name} al servidor?`,
+        icon: replacing ? 'warning' : 'question', showCancelButton: true,
+        confirmButtonText: replacing ? 'Confirmar reimportación' : 'Importar', cancelButtonText: 'Cancelar'
+      });
+      if (!confirm.isConfirmed) return;
+      abort.current = new AbortController();
+      setBusy(kind); setProgress(0);
+      const form = new FormData(); form.append('file', file);
+      const response = await api.post<Result>(URL[kind], form, {
+        signal: abort.current.signal,
+        onUploadProgress: e => { if (e.total) setProgress(Math.round(100 * e.loaded / e.total)); }
+      });
+      const data = response.data;
+      if (data.success === false && !data.message?.toLowerCase().includes('correctamente')) throw new Error(data.message || 'Importación fallida');
+      const item: RecordItem = { hash, name: file.name, size: file.size, completedAt: new Date().toISOString(), summary: data.summary };
+      setState(prev => ({ ...prev, [kind]: item, history: [...prev.history, { ...item, kind }] }));
+      setFiles(prev => ({ ...prev, [kind]: undefined }));
+      setEditing(null);
+      setMessage(`${NAME[kind]}: importación confirmada por el servidor.`);
+    } catch (e: any) {
+      setError(e?.code === 'ERR_CANCELED'
+        ? 'Solicitud cancelada. El servidor podría haberla procesado; verifica antes de reintentar.'
+        : (e?.response?.data?.message || e?.message || 'Error de conexión. Verifica en el servidor antes de reintentar.'));
+    } finally { locked.current = false; setBusy(null); abort.current = null; setProgress(0); }
+  };
+  const clearLocal = async () => {
+    const result = await Swal.fire({ title: '¿Borrar historial local?', text: 'Solo se borran los estados de este navegador; NO los registros de Laravel. Podrías volver a enviar archivos ya importados.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Borrar registro local', cancelButtonText: 'Cancelar' });
+    if (result.isConfirmed) {
+      localStorage.removeItem('school-imports-v2');
+      setState({ history: [] }); setFiles({}); setEditing(null);
+      setMessage('Se eliminó únicamente el registro de este navegador.');
+    }
+  };
+  return <div className="mx-auto mt-8 max-w-3xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+    <div className="mb-6 flex items-start justify-between gap-3"><div><h2 className="text-2xl font-bold text-slate-900">Centro de importaciones</h2><p className="mt-1 text-sm text-slate-500">Primero usuarios, luego asignaciones. Historial guardado automáticamente en este navegador.</p></div><FileSpreadsheet className="text-blue-600" size={30}/></div>
+    <div className="mb-5 flex items-center justify-between text-sm"><span className="font-medium text-slate-700">Progreso del proceso</span><span>{completed}/2 completados</span></div>
+    <div className="mb-7 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-blue-600 transition-all" style={{width:`${completed*50}%`}}/></div>
+    {error && <div role="alert" className="mb-4 flex gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700"><AlertTriangle size={18}/>{error}</div>}
+    {message && <div role="status" className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">{message}</div>}
+    {(['users','assignments'] as Kind[]).map(kind => {
+      const item = state[kind]; const disabled = kind === 'assignments' && !state.users;
+      const showPicker = !item || editing === kind;
+      return <section key={kind} className="mb-4 rounded-xl border border-slate-200 p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><div className="rounded-lg bg-slate-100 p-2"><FileSpreadsheet className="text-slate-600"/></div><div><h3 className="font-semibold text-slate-900">{kind === 'users' ? '1. Usuarios' : '2. Asignaciones'}</h3><p className="text-xs text-slate-500">{disabled ? 'Bloqueado hasta completar usuarios' : item ? 'Importado en este navegador' : 'Pendiente de importación'}</p></div></div>{item ? <CheckCircle2 className="text-green-600"/> : <Clock3 className="text-amber-500"/>}</div>
+        {item && <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-slate-700"><div className="font-medium break-all">{item.name}</div><div className="mt-1 text-xs">{new Date(item.completedAt).toLocaleString()} · {item.summary?.exitosas ?? '—'} registros exitosos · {item.summary?.errores ?? '—'} errores</div></div>}
+        {!disabled && showPicker && <div className="mt-4"><label className="block cursor-pointer rounded-lg border-2 border-dashed border-slate-300 p-5 text-center hover:border-blue-400"><UploadCloud className="mx-auto mb-2 text-blue-600"/><span className="text-sm text-slate-600">{files[kind]?.name || 'Seleccionar archivo Excel (.xls, .xlsx)'}</span><input type="file" accept=".xls,.xlsx" disabled={!!busy} onChange={e=>choose(kind,e)} className="sr-only"/></label><button type="button" disabled={!files[kind] || !!busy} onClick={()=>upload(kind)} className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-40">{busy === kind ? `Enviando ${progress}%` : item ? 'Importar archivo modificado' : `Importar ${NAME[kind].toLowerCase()}`}</button>{item && <button type="button" disabled={!!busy} onClick={()=>{setEditing(null);setFiles(p=>({...p,[kind]:undefined}));}} className="ml-3 text-sm text-slate-500">Cancelar edición</button>}</div>}
+        {item && !showPicker && <button type="button" disabled={!!busy} onClick={()=>setEditing(kind)} className="mt-3 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Pencil size={15}/> Subir versión modificada</button>}
+      </section>;
+    })}
+    {busy && <button onClick={()=>abort.current?.abort()} className="mb-4 text-sm text-red-600">Cancelar solicitud</button>}
+    <div className="mt-5 border-t pt-4"><h3 className="mb-2 text-sm font-semibold">Historial de este navegador</h3>{state.history.length ? <div className="max-h-44 space-y-2 overflow-y-auto">{[...state.history].reverse().map((h,i)=><div key={`${h.hash}-${i}`} className="flex justify-between gap-3 rounded-lg bg-slate-50 p-2 text-xs"><span className="break-all">{NAME[h.kind]} · {h.name}</span><span className="shrink-0 text-slate-500">{new Date(h.completedAt).toLocaleDateString()}</span></div>)}</div> : <p className="text-xs text-slate-500">No hay historial de versiones en este navegador.</p>}
+    <button type="button" disabled={!!busy} onClick={clearLocal} className="mt-4 inline-flex items-center gap-2 text-xs text-slate-500 hover:text-red-600"><Trash2 size={14}/> Restablecer registro local</button></div>
+    <p className="mt-4 text-xs text-amber-700">El historial local no verifica el estado real del servidor. Si se borra el almacenamiento, se usa otro dispositivo o una solicitud queda sin respuesta, comprueba los datos antes de reintentar.</p>
+  </div>;
+};
 export default InteractiveSequentialImport;
