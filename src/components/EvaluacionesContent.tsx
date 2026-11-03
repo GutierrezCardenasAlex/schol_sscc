@@ -12,13 +12,13 @@ import {
   RefreshCcw,
   Info,
   BarChart3,
+  FileText,
 } from "lucide-react";
 
 interface Evaluacion {
   id: number;
   titulo: string;
   estado: boolean;
-  curso_nombre: string;
   materia_nombre: string;
   docente_nombre: string;
   duracion_minutos: number;
@@ -103,56 +103,66 @@ const EvaluacionesTable: React.FC = () => {
     }
   };
 
-  // Acciones (simuladas)
   const handleVerDetalles = (eva: Evaluacion) => {
     Swal.fire({
       title: "Detalles de la Evaluación",
       html: `
-        <b>Título:</b> ${eva.titulo}<br/>
-        <b>Curso:</b> ${eva.curso_nombre}<br/>
-        <b>Materia:</b> ${eva.materia_nombre}<br/>
-        <b>Docente:</b> ${eva.docente_nombre}<br/>
-        <b>Duración:</b> ${eva.duracion_minutos} minutos<br/>
-        <b>Estado:</b> ${eva.estado ? "Activo" : "Inactivo"}
+        <div style="text-align: left; font-size: 14px; line-height: 1.6;">
+          <b>Título:</b> ${eva.titulo}<br/>
+          <b>Materia:</b> ${eva.materia_nombre}<br/>
+          <b>Docente:</b> ${eva.docente_nombre}<br/>
+          <b>Duración:</b> ${eva.duracion_minutos} minutos<br/>
+          <b>Estado:</b> ${eva.estado ? "Activo" : "Inactivo"}
+        </div>
       `,
       icon: "info",
       confirmButtonText: "Cerrar",
-      confirmButtonColor: "#2563eb",
+      confirmButtonColor: "#4f46e5",
     });
   };
 
   const handleVerReportes = (eva: Evaluacion) => {
     Swal.fire({
-      title: "Reportes por Curso",
-      text: `Mostrando reportes del curso "${eva.curso_nombre}"...`,
-      icon: "bar-chart",
+      title: "Reportes de la Evaluación",
+      text: `Mostrando reportes de "${eva.titulo}"...`,
+      icon: "info",
       confirmButtonText: "Cerrar",
+      confirmButtonColor: "#4f46e5",
     });
   };
 
   if (loading)
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-indigo-600"></div>
       </div>
     );
 
   if (error)
     return (
-      <p className="text-red-500 font-medium text-center mt-4">
+      <p className="text-rose-500 font-medium text-center mt-4">
         Error: {error}
       </p>
     );
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl shadow-lg">
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
-          <Clock className="text-green-600" /> Evaluaciones
-        </h2>
+    <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-extrabold text-slate-800 flex items-center gap-2.5">
+            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+              <Clock size={24} />
+            </div>
+            Gestión de Evaluaciones
+          </h2>
+          <p className="text-slate-500 text-sm mt-1">
+            Administra los tiempos, estados y reportes de las evaluaciones disponibles.
+          </p>
+        </div>
+
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-xl font-semibold transition"
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white px-5 py-2.5 rounded-xl font-semibold shadow-md shadow-indigo-100 transition-all"
         >
           <UploadCloud size={20} />
           Subir Evaluación
@@ -168,42 +178,40 @@ const EvaluacionesTable: React.FC = () => {
       )}
 
       {updating && (
-        <div className="flex items-center gap-2 text-green-700 font-semibold mb-3 animate-pulse">
+        <div className="flex items-center gap-2 text-indigo-600 font-semibold mb-4 text-sm bg-indigo-50 p-3 rounded-xl animate-pulse">
           <RefreshCcw className="animate-spin" size={18} />
           Actualizando evaluaciones...
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-2xl shadow-md border border-gray-200">
-        <table className="min-w-full bg-white rounded-2xl overflow-hidden">
-          <thead className="bg-green-600 text-white uppercase text-sm">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+        <table className="min-w-full bg-white divide-y divide-slate-200 text-left text-sm">
+          <thead className="bg-slate-50 text-slate-600 uppercase text-xs font-semibold tracking-wider">
             <tr>
-              <th className="px-6 py-3 text-left">ID</th>
-              <th className="px-6 py-3 text-left">Título</th>
-              <th className="px-6 py-3 text-left">Curso</th>
-              <th className="px-6 py-3 text-left">Materia</th>
-              <th className="px-6 py-3 text-left">Docente</th>
-              <th className="px-6 py-3 text-center">Duración</th>
-              <th className="px-6 py-3 text-center">Estado</th>
-              <th className="px-6 py-3 text-center">Acciones</th>
+              <th className="px-6 py-3.5">ID</th>
+              <th className="px-6 py-3.5">Título</th>
+              <th className="px-6 py-3.5">Materia</th>
+              <th className="px-6 py-3.5">Docente</th>
+              <th className="px-6 py-3.5 text-center">Duración (min)</th>
+              <th className="px-6 py-3.5 text-center">Estado</th>
+              <th className="px-6 py-3.5 text-center">Acciones</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100 text-slate-700">
             {evaluaciones.map((eva) => (
-              <tr
-                key={eva.id}
-                className="hover:bg-gray-50 border-b transition"
-              >
-                <td className="px-6 py-3 font-semibold text-gray-700">
+              <tr key={eva.id} className="hover:bg-slate-50/70 transition">
+                <td className="px-6 py-4 font-bold text-slate-500">
                   #{eva.id}
                 </td>
-                <td className="px-6 py-3">{eva.titulo}</td>
-                <td className="px-6 py-3">{eva.curso_nombre}</td>
-                <td className="px-6 py-3">{eva.materia_nombre}</td>
-                <td className="px-6 py-3">{eva.docente_nombre}</td>
+                <td className="px-6 py-4 font-semibold text-slate-800 flex items-center gap-2">
+                  <FileText size={16} className="text-indigo-500 shrink-0" />
+                  <span className="truncate max-w-xs">{eva.titulo}</span>
+                </td>
+                <td className="px-6 py-4">{eva.materia_nombre}</td>
+                <td className="px-6 py-4">{eva.docente_nombre}</td>
 
                 {/* Duración con input editable */}
-                <td className="px-6 py-3 text-center">
+                <td className="px-6 py-4 text-center">
                   <div className="flex justify-center items-center gap-2">
                     <input
                       type="number"
@@ -212,11 +220,12 @@ const EvaluacionesTable: React.FC = () => {
                       onChange={(e) =>
                         handleChangeTime(eva.id, e.target.value)
                       }
-                      className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-center focus:ring-2 focus:ring-green-400 outline-none"
+                      className="w-20 border border-slate-300 rounded-lg px-2.5 py-1.5 text-center focus:ring-2 focus:ring-indigo-100 focus:border-indigo-600 outline-none text-slate-800 font-medium transition-all"
                     />
                     <button
                       onClick={() => handleUpdateTime(eva.id)}
-                      className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white transition"
+                      title="Guardar duración"
+                      className="p-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-lg text-white transition-all shadow-sm"
                     >
                       <Save size={16} />
                     </button>
@@ -224,41 +233,43 @@ const EvaluacionesTable: React.FC = () => {
                 </td>
 
                 {/* Estado */}
-                <td className="px-6 py-3 text-center">
+                <td className="px-6 py-4 text-center">
                   <button
                     onClick={() => handleToggleEstado(eva)}
-                    className={`inline-flex items-center gap-1 px-4 py-2 rounded-full font-semibold transition ${
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm ${
                       eva.estado
-                        ? "bg-green-100 text-green-700 hover:bg-green-200"
-                        : "bg-red-100 text-red-700 hover:bg-red-200"
+                        ? "bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100"
+                        : "bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100"
                     }`}
                   >
                     {eva.estado ? (
                       <>
-                        <CheckCircle2 size={16} /> Activo
+                        <CheckCircle2 size={14} /> Activo
                       </>
                     ) : (
                       <>
-                        <XCircle size={16} /> Inactivo
+                        <XCircle size={14} /> Inactivo
                       </>
                     )}
                   </button>
                 </td>
 
-                {/* Acciones nuevas */}
-                <td className="px-6 py-3 text-center">
+                {/* Acciones */}
+                <td className="px-6 py-4 text-center">
                   <div className="flex justify-center gap-2">
                     <button
                       onClick={() => handleVerDetalles(eva)}
-                      className="flex items-center gap-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition"
+                      title="Ver detalles"
+                      className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg text-xs transition"
                     >
-                      <Info size={16} /> Detalles
+                      <Info size={14} /> Detalles
                     </button>
                     <button
                       onClick={() => handleVerReportes(eva)}
-                      className="flex items-center gap-1 px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm transition"
+                      title="Ver reportes"
+                      className="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium rounded-lg text-xs transition"
                     >
-                      <BarChart3 size={16} /> Reportes
+                      <BarChart3 size={14} /> Reportes
                     </button>
                   </div>
                 </td>

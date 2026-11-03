@@ -7,7 +7,6 @@ import ProfileContent from "../components/ProfileContent";
 import SettingsContent from "../components/SettingsContent";
 import AlumnosContent from "../components/AlumnosContent";
 import MateriaTable from "../components/MateriasContent";
-import TestApi from "../components/TestApi";
 import InteractiveSequentialImport from "../components/ImportExcel";
 import DocentesTable from "../components/DocentesContent";
 import EvaluacionesTable from "../components/EvaluacionesContent";
@@ -46,21 +45,4 @@ const DashboardPage: React.FC = () => {
 };
 export default DashboardPage;
 
-// {// src/pages/DashboardPage.tsx
-// import React from "react";
-// import { useAuth } from "../context/AuthContext";
-
-// const DashboardPage: React.FC = () => {
-//   const { user } = useAuth();
-
-//   return (
-//     <div>
-//       <h1>Dashboard</h1>
-//       <p>Bienvenido, {user?.name}</p>
-//       <p>Tu rol: {user?.role}</p>
-//     </div>
-//   );
-// };
-
-// export default DashboardPage;
 
